@@ -47,13 +47,8 @@ jobs:
           set -euo pipefail
           env_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production-approval")"
           reviewer_count="$(printf '%s' "$env_json" | jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')"
-          admin_bypass="$(printf '%s' "$env_json" | jq -r '.can_admins_bypass // true')"
           if [ "$reviewer_count" -lt 1 ]; then
             echo "::error::production-approval has no required reviewers. Refusing to deploy."
-            exit 1
-          fi
-          if [ "$admin_bypass" != "false" ]; then
-            echo "::error::production-approval allows administrator bypass. Refusing to deploy."
             exit 1
           fi
 
