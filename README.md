@@ -11,4 +11,7 @@ administrator bypass is disabled. The `deploy` job then waits for approval
 before deploying the prebuilt image with Fly.
 
 This repository contains no application source, customer data, or deploy token
-in version control. The Fly token is stored only as a repository secret.
+in version control. The Fly token is stored only as a repository secret. The
+release request copies the tested `fly.toml` from the private release commit so
+the deployment keeps the production volume, HTTP service, and machine settings
+in sync with the application release.
