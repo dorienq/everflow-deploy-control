@@ -1,0 +1,7 @@
+{
+  "app": "everflow-automations-prod",
+  "image": "registry.fly.io/everflow-automations-prod:release-14603f4d0a98d49bb7a1bbb57750b50fd9a4076b-43787814044",
+  "sha": "14603f4d0a98d49bb7a1bbb57750b50fd9a4076b",
+  "run_url": "https://github.com/dorienq/everflow-automations/actions/runs/43787814044",
+  "requested_at": "2026-11-16T01:47:22Z"
+}
