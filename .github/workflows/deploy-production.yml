@@ -1,0 +1,97 @@
+name: Deploy production
+
+on:
+  push:
+    tags:
+      - "release-*"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: everflow-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Verify release and reviewer gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate release metadata
+        run: |
+          set -euo pipefail
+          test -f release.json
+          jq -e 'type == "object"' release.json >/dev/null
+          jq -e '.app == "everflow-automations-prod"' release.json >/dev/null
+          jq -e '.image | test("^registry\\.fly\\.io/everflow-automations-prod:release-[0-9a-f]{40}-[0-9]+$")' release.json >/dev/null
+          jq -e '.sha | test("^[0-9a-f]{40}$")' release.json >/dev/null
+          jq -e '.run_url | test("^https://github\\.com/dorienq/everflow-automations/actions/runs/[0-9]+$")' release.json >/dev/null
+          {
+            echo "## Production deployment"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            jq -r '"| Image | `\(.image)` |\n| Commit | `\(.sha)` |\n| Source run | \(.run_url) |"' release.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify required reviewers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          env_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production-approval")"
+          reviewer_count="$(printf '%s' "$env_json" | jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')"
+          admin_bypass="$(printf '%s' "$env_json" | jq -r '.can_admins_bypass // true')"
+          if [ "$reviewer_count" -lt 1 ]; then
+            echo "::error::production-approval has no required reviewers. Refusing to deploy."
+            exit 1
+          fi
+          if [ "$admin_bypass" != "false" ]; then
+            echo "::error::production-approval allows administrator bypass. Refusing to deploy."
+            exit 1
+          fi
+
+  deploy:
+    name: Deploy approved image
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production-approval
+      url: https://everflowautomations.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy image
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          image="$(jq -r '.image' release.json)"
+          app="$(jq -r '.app' release.json)"
+          echo "Deploying $image to $app"
+          flyctl deploy --image "$image" --app "$app" --yes
+
+      - name: Verify production health
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            if body="$(curl -fsS --max-time 10 https://everflowautomations.com/api/health)"; then
+              printf '%s\n' "$body"
+              printf '%s' "$body" | jq -e '.ok == true and .database == "ok"' >/dev/null && exit 0
+            fi
+            sleep 3
+          done
+          echo "Production health check failed." >&2
+          exit 1
