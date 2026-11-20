@@ -1,7 +1,7 @@
 {
   "app": "everflow-automations-prod",
-  "image": "registry.fly.io/everflow-automations-prod:release-0945ec4414f488ae29c03ad29b3165a28e4e14d4-44610417821",
-  "sha": "0945ec4414f488ae29c03ad29b3165a28e4e14d4",
-  "run_url": "https://github.com/dorienq/everflow-automations/actions/runs/44610417821",
-  "requested_at": "2026-11-19T20:41:43Z"
+  "image": "registry.fly.io/everflow-automations-prod:release-fed3da4a416d84f144ac82e24dd47edce04fb5b0-44688345465",
+  "sha": "fed3da4a416d84f144ac82e24dd47edce04fb5b0",
+  "run_url": "https://github.com/dorienq/everflow-automations/actions/runs/44688345465",
+  "requested_at": "2026-11-20T06:35:34Z"
 }
